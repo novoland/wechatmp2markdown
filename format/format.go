@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	// "fmt"
 
 	"github.com/fengxxc/wechatmp2markdown/parse"
 	"github.com/fengxxc/wechatmp2markdown/util"
@@ -139,12 +140,17 @@ func FormatAndSave(article parse.Article, filePath string) error {
 }
 
 func formatTitle(piece parse.Piece) string {
-	var prefix string
-	level, _ := strconv.Atoi(piece.Attrs["level"])
-	for i := 0; i < level; i++ {
-		prefix += "#"
-	}
-	return prefix + " " + piece.Val.(string) + "  \n"
+    // 如果piece.Val为空或空字符串，直接返回空字符串
+    if piece.Val == nil || piece.Val.(string) == "" {
+        return ""
+    }
+    
+    var prefix string
+    level, _ := strconv.Atoi(piece.Attrs["level"])
+    for i := 0; i < level; i++ {
+        prefix += "#"
+    }
+    return prefix + " " + piece.Val.(string) + "  \n"
 }
 
 func formatMeta(meta []string) string {
@@ -208,6 +214,7 @@ func formatContent(pieces []parse.Piece, depth int) (string, map[string][]byte) 
 		case parse.NULL:
 			continue
 		}
+		// fmt.Printf("mdstr: %s\n", pieceMdStr)
 		contentMdStr += pieceMdStr
 		util.MergeMap(saveImageBytes, patchSaveImageBytes)
 	}

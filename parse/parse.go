@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -38,6 +39,44 @@ func parseSection(s *goquery.Selection, imagePolicy ImagePolicy, lastPieceType P
 			case IMAGE_POLICY_SAVE:
 				image := fetchImgFile(attr["src"])
 				pieces = append(pieces, Piece{IMAGE, image, attr})
+			case IMAGE_POLICY_SAVE_SERVER:
+				image := fetchImgFile(attr["src"])
+				// 从src里解析出文件名
+				parts := strings.Split(attr["src"], "/")
+				imgName := strconv.FormatInt(time.Now().Unix(), 10) + ".png"
+				if len(parts) >= 2 {
+					// 提取倒数第二部分作为图片ID
+					idPart := parts[len(parts)-2]
+					
+					// 从查询参数中获取图片格式
+					format := "png" // 默认格式
+					if strings.Contains(attr["src"], "wx_fmt=") {
+						queryParts := strings.Split(attr["src"], "wx_fmt=")
+						if len(queryParts) > 1 {
+							format = strings.Split(queryParts[1], "&")[0]
+						}
+					}
+					
+					imgName = idPart + "." + format
+				}
+				// 保存到 /root/img 目录下
+				// err := os.MkdirAll("/root/img", 0755)
+				// if err != nil {
+				// 	log.Fatalf("create directory error: %s", err.Error())
+				// }
+				filePath := "/root/img/" + imgName
+				err := os.WriteFile(filePath, image, 0644)
+				if err != nil {
+					log.Fatalf("save image error: %s", err.Error())
+				}
+				// piece的attr用  http://{host}/img?name={imgname} 替换
+				host := "dalibao.uk:7004" // 需要替换为实际的host
+				attr["src"] = "http://" + host + "/img?name=" + imgName
+				pieces = append(pieces, Piece{IMAGE, nil, attr})
+			case IMAGE_IMGPROXY_URL:
+				attr["src"] = "http://dalibao.uk:7005//" + strings.Split(attr["src"], "?")[0]
+				// fmt.Printf("imgurl: %s\n", attr["src"])
+				pieces = append(pieces, Piece{IMAGE, nil, attr})
 			case IMAGE_POLICY_BASE64:
 				fallthrough
 			default:
@@ -285,6 +324,8 @@ const (
 	IMAGE_POLICY_URL ImagePolicy = iota
 	IMAGE_POLICY_SAVE
 	IMAGE_POLICY_BASE64
+	IMAGE_POLICY_SAVE_SERVER
+	IMAGE_IMGPROXY_URL
 )
 
 func ImageArgValue2ImagePolicy(val string) ImagePolicy {
@@ -294,6 +335,10 @@ func ImageArgValue2ImagePolicy(val string) ImagePolicy {
 		imagePolicy = IMAGE_POLICY_URL
 	case "save":
 		imagePolicy = IMAGE_POLICY_SAVE
+	case "save_server":
+		imagePolicy = IMAGE_POLICY_SAVE_SERVER
+	case "imgproxy_url":
+		imagePolicy = IMAGE_IMGPROXY_URL
 	case "base64":
 		fallthrough
 	default:

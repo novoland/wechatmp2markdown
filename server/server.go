@@ -1,21 +1,46 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
+	"os"
+	"path/filepath"
 
 	"github.com/fengxxc/wechatmp2markdown/format"
 	"github.com/fengxxc/wechatmp2markdown/parse"
-	"github.com/fengxxc/wechatmp2markdown/util"
+	// "github.com/fengxxc/wechatmp2markdown/util"
 )
 
 func Start(addr string) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		rawQuery := r.URL.RawQuery
-		paramsMap := parseParams(rawQuery)
+		// rawQuery := r.URL.RawQuery
+        paramsMap := make(map[string]string)
+
+		if r.Method == "POST" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Printf("Error reading body: %v", err)
+			} else {
+				// 打印请求体内容
+				fmt.Printf("Request body: %s\n", string(body))
+				bodyParams, err := url.ParseQuery(string(body))
+				if err == nil {
+					for k, v := range bodyParams {
+						// 打印键值对
+						fmt.Printf("Key: %s, Value: %v\n", k, v)
+						if len(v) > 0 {
+							paramsMap[k] = v[0]
+						}
+					}
+				}
+			}
+		}
 
 		// url param
 		wechatmpURL := paramsMap["url"]
@@ -29,19 +54,77 @@ func Start(addr string) {
 			w.Write([]byte(defHTML))
 			return
 		}
-		w.Header().Set("Content-Type", "application/octet-stream")
+		// w.Header().Set("Content-Type", "application/octet-stream")
+		// var articleStruct parse.Article = parse.ParseFromURL(wechatmpURL, imagePolicy)
+		// title := articleStruct.Title.Val.(string)
+		// mdString, saveImageBytes := format.Format(articleStruct)
+		// if len(saveImageBytes) > 0 {
+		// 	w.Header().Set("Content-Disposition", "attachment; filename="+title+".zip")
+		// 	saveImageBytes[title] = []byte(mdString)
+		// 	util.HttpDownloadZip(w, saveImageBytes)
+		// } else {
+		// 	w.Header().Set("Content-Disposition", "attachment; filename="+title+".md")
+		// 	w.Write([]byte(mdString))
+		// }
+
+
+		w.Header().Set("Content-Type", "application/json")
 		var articleStruct parse.Article = parse.ParseFromURL(wechatmpURL, imagePolicy)
 		title := articleStruct.Title.Val.(string)
 		mdString, saveImageBytes := format.Format(articleStruct)
-		if len(saveImageBytes) > 0 {
-			w.Header().Set("Content-Disposition", "attachment; filename="+title+".zip")
-			saveImageBytes[title] = []byte(mdString)
-			util.HttpDownloadZip(w, saveImageBytes)
-		} else {
-			w.Header().Set("Content-Disposition", "attachment; filename="+title+".md")
-			w.Write([]byte(mdString))
+		
+		response := map[string]interface{}{
+			"title":   title,
+			"content": mdString,
 		}
+		if len(saveImageBytes) > 0 {
+			response["has_images"] = true
+		}
+		jsonData, err := json.Marshal(response)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error": "failed to marshal json"}`))
+			return
+		}
+		w.Write(jsonData)
 	})
+
+	// 图片服务处理
+http.HandleFunc("/img", func(w http.ResponseWriter, r *http.Request) {
+	imageName := r.URL.Query().Get("name")
+	if imageName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error": "image name is required"}`))
+		return
+	}
+
+	imagePath := filepath.Join("/root/img", imageName)
+	imageData, err := os.ReadFile(imagePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error": "image not found"}`))
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error": "failed to read image"}`))
+		}
+		return
+	}
+
+	// 根据文件扩展名设置Content-Type
+	ext := filepath.Ext(imageName)
+	switch ext {
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpeg")
+	case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	default:
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	w.Write(imageData)
+})
 
 	fmt.Printf("wechatmp2markdown server listening on %s\n", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
