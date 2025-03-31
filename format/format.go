@@ -228,7 +228,14 @@ func formatContent(pieces []parse.Piece, depth int) (string, map[string][]byte) 
 
 // 判断字符串最后一个字符是否为':'，如果是则添加一个空格
 func extraSpace(s string) string {
-    if len(s) > 0 && (s[len(s)-1] == ':' || s[len(s)-1] == '：') {
+	if len(s) == 0 {
+        return ""
+    }
+    if (s[len(s)-1] == ':') {
+        return " "
+    }
+	runes := []rune(s)
+    if len(runes) > 0 && runes[len(runes)-1] == '：'{
         return " "
     }
     return ""
