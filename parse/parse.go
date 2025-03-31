@@ -186,7 +186,6 @@ func parseTable(s *goquery.Selection) []Piece {
 
 func parseStrong(s *goquery.Selection) []Piece {
 	var bt []Piece
-	// fmt.Println("strong:", strings.TrimSpace(s.Text()))
 	bt = append(bt, Piece{BOLD_TEXT, strings.TrimSpace(s.Text()), nil})
 	return bt
 }

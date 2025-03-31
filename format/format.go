@@ -175,12 +175,13 @@ func formatContent(pieces []parse.Piece, depth int) (string, map[string][]byte) 
 			pieceMdStr = formatLink(piece)
 		case parse.NORMAL_TEXT:
 			pieceMdStr = piece.Val.(string)
+		// extra space 的作用：当前要加粗的文本最后以:结尾时，有些编辑器会识别失败。需要在右侧**后面添加一个空格
 		case parse.BOLD_TEXT:
-			pieceMdStr = "**" + piece.Val.(string) + "**"
+			pieceMdStr = "**" + piece.Val.(string) + "**" + extraSpace(piece.Val.(string))
 		case parse.ITALIC_TEXT:
-			pieceMdStr = "*" + piece.Val.(string) + "*"
+			pieceMdStr = "*" + piece.Val.(string) + "*" + extraSpace(piece.Val.(string))
 		case parse.BOLD_ITALIC_TEXT:
-			pieceMdStr = "***" + piece.Val.(string) + "***"
+			pieceMdStr = "***" + piece.Val.(string) + "***" + extraSpace(piece.Val.(string))
 		case parse.IMAGE:
 			if piece.Val == nil {
 				pieceMdStr = formatImageInline(piece)
@@ -223,6 +224,15 @@ func formatContent(pieces []parse.Piece, depth int) (string, map[string][]byte) 
 	}
 	return contentMdStr, saveImageBytes
 }
+
+// 判断字符串最后一个字符是否为':'，如果是则添加一个空格
+func extraSpace(s string) string {
+    if len(s) > 0 && s[len(s)-1] == ':' {
+        return " "
+    }
+    return ""
+}
+
 
 func formatTable(piece parse.Piece) string {
 	var tableMdStr string
