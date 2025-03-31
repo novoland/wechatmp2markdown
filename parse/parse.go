@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
+	// "fmt"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -20,6 +20,8 @@ func parseSection(s *goquery.Selection, imagePolicy ImagePolicy, lastPieceType P
 	var pieces []Piece
 	if lastPieceType == O_LIST || lastPieceType == U_LIST || lastPieceType == NULL || lastPieceType == BLOCK_QUOTES {
 		// pieces = append(pieces, Piece{NULL, nil, nil})
+	} else if s.Is("span") {
+		// span作为一个内联容器，不需要在开头加换行
 	} else {
 		pieces = append(pieces, Piece{BR, nil, nil})
 	}
@@ -184,7 +186,7 @@ func parseTable(s *goquery.Selection) []Piece {
 
 func parseStrong(s *goquery.Selection) []Piece {
 	var bt []Piece
-	fmt.Println("strong:", strings.TrimSpace(s.Text()))
+	// fmt.Println("strong:", strings.TrimSpace(s.Text()))
 	bt = append(bt, Piece{BOLD_TEXT, strings.TrimSpace(s.Text()), nil})
 	return bt
 }

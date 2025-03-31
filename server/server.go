@@ -90,41 +90,41 @@ func Start(addr string) {
 	})
 
 	// 图片服务处理
-http.HandleFunc("/img", func(w http.ResponseWriter, r *http.Request) {
-	imageName := r.URL.Query().Get("name")
-	if imageName == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "image name is required"}`))
-		return
-	}
-
-	imagePath := filepath.Join("/root/img", imageName)
-	imageData, err := os.ReadFile(imagePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"error": "image not found"}`))
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error": "failed to read image"}`))
+	http.HandleFunc("/img", func(w http.ResponseWriter, r *http.Request) {
+		imageName := r.URL.Query().Get("name")
+		if imageName == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error": "image name is required"}`))
+			return
 		}
-		return
-	}
 
-	// 根据文件扩展名设置Content-Type
-	ext := filepath.Ext(imageName)
-	switch ext {
-	case ".jpg", ".jpeg":
-		w.Header().Set("Content-Type", "image/jpeg")
-	case ".png":
-		w.Header().Set("Content-Type", "image/png")
-	case ".gif":
-		w.Header().Set("Content-Type", "image/gif")
-	default:
-		w.Header().Set("Content-Type", "application/octet-stream")
-	}
-	w.Write(imageData)
-})
+		imagePath := filepath.Join("/root/img", imageName)
+		imageData, err := os.ReadFile(imagePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(`{"error": "image not found"}`))
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"error": "failed to read image"}`))
+			}
+			return
+		}
+
+		// 根据文件扩展名设置Content-Type
+		ext := filepath.Ext(imageName)
+		switch ext {
+		case ".jpg", ".jpeg":
+			w.Header().Set("Content-Type", "image/jpeg")
+		case ".png":
+			w.Header().Set("Content-Type", "image/png")
+		case ".gif":
+			w.Header().Set("Content-Type", "image/gif")
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+		w.Write(imageData)
+	})
 
 	fmt.Printf("wechatmp2markdown server listening on %s\n", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
